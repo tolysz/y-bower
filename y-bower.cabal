@@ -38,6 +38,7 @@ executable lsbow
   build-depends: base >= 4 && <= 5
                , y-bower
                , directory
+--               , system-filepath
                , aeson
                , bytestring
                , unordered-containers

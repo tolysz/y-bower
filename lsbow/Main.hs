@@ -13,7 +13,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-
 import Data.Monoid
 import Data.Maybe
 import qualified Data.List as DL
@@ -25,8 +24,8 @@ import qualified Data.Aeson.Types as DA
 import qualified Data.ByteString.Lazy as B
 
 import Control.Arrow
-
 import Control.Applicative
+import Control.Exception
 
 import qualified Data.HashMap.Strict as HM
 
@@ -45,6 +44,8 @@ defRC = ".bowerrc"
 defYB :: String
 defYB = ".ybow"
 
+shiv :: String
+shiv = "fix"
 
 getWebComponents :: IO [Text]
 getWebComponents = doesFileExist defYB >>= bool (return []) (T.words <$> T.readFile defYB)
@@ -58,9 +59,18 @@ readRc = (DA.decode <$> B.readFile defRC) >>= \case
              Nothing -> return defFolder
              Just v  -> return (BT.directory v)
 
+drf f =
+  doesFileExist f >>= \case
+     True -> DA.decode <$> B.readFile f
+     False -> return Nothing
+
 -- | parse bower.json at some location
-readBowerJSON :: String ->  IO (Maybe BT.BowerJSON)
-readBowerJSON f = DA.decode <$> B.readFile f
+readBowerJSON :: String -> String ->  IO (Maybe BT.BowerJSON)
+readBowerJSON p f = do
+       fa <- drf (shiv </> p </>  "bower.json")
+       a <- drf (p </> "." ++ f)
+       b <- drf (p </> f)
+       return (fa <|> a <|> b)
 
 -- | get dependencies from it
 getDeps :: Maybe BT.BowerJSON -> [Text]
@@ -70,25 +80,27 @@ getDeps = maybe [] (HM.keys . BT.dependencies)
 getMains :: Maybe BT.BowerJSON -> [Text]
 getMains = maybe [] BT.main
 
+(</>) a b
+  | null a     = b
+  | otherwise  = a ++ "/" ++ b
+
 -- | traverse all referenced modules, and build dependency tree from them
 recurseDeps :: Text -> [Text] -> [Text] -> IO [(Text, [Text],[Text])]
 recurseDeps _ _ [] = return []
-recurseDeps bd vs (a:as) = do
+recurseDeps bd vs (a:as) =
         if  a `elem` vs
           then recurseDeps bd vs as
           else do
-             (b1,mf) <- (getDeps &&& getMains) <$> readBowerJSON (T.unpack $ bd <> "/" <>  a <> "/bower.json")
+             (b1,mf) <- (getDeps &&& getMains) <$> readBowerJSON (T.unpack bd </> T.unpack a) "bower.json"
              bs <- recurseDeps bd (a:vs) (as <> b1)
              return ((a,b1,mf) : bs)
--- recurseDeps bd
-
 -- | we should be fine concatenating all JS files, but css and files needs to be relative
 
 deTree :: Text -> [(Text, [Text],[Text])] -> [(Text, Text)]
             -- |     name deps files
 -- ^ take base dir and our sorted tree and produce list of relative path, absolute
 deTree _ [] = []
-deTree bd ((n,_,fs):as) = (DL.map (\(dropDot -> f) -> (f, bd <> "/" <> n <> "/" <> f) )  fs) <> deTree bd as
+deTree bd ((n,_,fs):as) = DL.map (\(dropDot -> f) -> (f, bd <> "/" <> n <> "/" <> f) ) fs <> deTree bd as
 
 dropDot :: Text -> Text
 -- ^ some files have "./" in the beginning so, drop it
@@ -102,7 +114,7 @@ main = do
 --     putStrLn "bow"
      bd   <-  T.pack <$>  getBaseDir
      wc   <- getWebComponents
-     tree <- DL.sortBy deps <$> ( recurseDeps bd [] =<< getDeps <$> readBowerJSON "bower.json" )
+     tree <- DL.sortBy deps <$> ( recurseDeps bd [] =<< getDeps <$> readBowerJSON "" "bower.json" )
 
      let (webc, tree') = DL.partition (\(a,_,_)-> a `elem` wc) tree
 --     print tree
@@ -112,8 +124,6 @@ main = do
        -- ^  split into js and rest
          toMin  = T.unwords . DL.map ( ("../" <> ). snd) $ jss
          refCss = T.unwords . DL.map ( (\a -> "@import url('" <> dropDist a <> "');\\n") . fst) $ css
---     mapM_ print jss
---     mapM_ print rest
 
      T.putStrLn $ "#!/bin/bash\n\nclu app.min " <> toMin
      T.putStrLn $ T.unlines $ map (\(a,_,_) -> "cp -r ../" <> bd <> "/" <> a <> " .") $ filter (\(_,_,a) -> DL.null a ) tree'
@@ -121,7 +131,7 @@ main = do
      -- ^ we will need to run vulcanize over them
      T.putStrLn $ generateRestCP rest
      T.putStrLn $ "echo -e \" " <> refCss <> "\" > app.css"
-     T.putStrLn $ "\ncd .."
+     T.putStrLn   "\ncd .."
 
 generateRestCP ls = T.unlines $ DL.map  (\(a,b) -> let dt = ( fst . T.breakOn "*" . dropDist $ a) in "mkdir -p `dirname "<> dt <>"x` && cp -r ../" <> b <> " " <> dt ) ls
  -- maybe replace it by find

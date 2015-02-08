@@ -27,7 +27,7 @@ instance ToJSON BowerRC
 -- https://github.com/bower/bower.json-spec
 
 
-data OneOrList = OneOrList { unOneOrList :: [Text] }
+data OneOrList = OneOrList { unOneOrList :: ![Text] }
 
 instance FromJSON OneOrList where
 --  parseJSON Missing  = pure $  BowerJSON MissingData
@@ -35,17 +35,17 @@ instance FromJSON OneOrList where
   parseJSON (Array a)  = OneOrList . V.toList <$> V.mapM parseJSON a
 
 data BowerJSON =
-  BowerJSON { name            :: Text
+  BowerJSON { name            :: !Text
 --            , description     :: Possible Text
 --            , version         :: Possible Text
-            , main            :: [ Text ]
+            , main            :: ![ Text ]
 --            , license         :: Maybe Text or [Text]
 --            , ignore          :: Possible [Text]
 --            , keywords        :: Possible [Text]
 --            , authors         :: Array of (String or Object)
 --            , homepage        :: Possible Text
 --            , repository      :: Possible Value
-            , dependencies    :: (HashMap Text Text)
+            , dependencies    :: !(HashMap Text Text)
 --            , devDependencies :: Possible Value
 --            , resolutions     :: Possible Value
 --            , private         :: Possible Bool
@@ -57,7 +57,7 @@ instance Default BowerJSON where
 
 -- instance Monoid BowerJSON
 -- instance FromJSON BowerJSON
-instance ToJSON   BowerJSON
+instance ToJSON BowerJSON
 
 instance FromJSON BowerJSON where
 --  parseJSON Missing  = pure $  BowerJSON MissingData
