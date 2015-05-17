@@ -85,7 +85,7 @@ getMains = maybe [] BT.main
   | otherwise  = a ++ "/" ++ b
 
 -- | traverse all referenced modules, and build dependency tree from them
-recurseDeps :: Text -> [Text] -> [Text] -> IO [(Text, [Text],[Text])]
+recurseDeps ::  Text -> [Text] -> [Text] -> IO [(Text, [Text],[Text])]
 recurseDeps _ _ [] = return []
 recurseDeps bd vs (a:as) =
         if  a `elem` vs
@@ -114,10 +114,10 @@ main = do
 --     putStrLn "bow"
      bd   <-  T.pack <$>  getBaseDir
      wc   <- getWebComponents
-     tree <- DL.sortBy deps <$> ( recurseDeps bd [] =<< getDeps <$> readBowerJSON "" "bower.json" )
+     tree <- topoSort3 [] <$> ( recurseDeps bd [] =<< getDeps <$> readBowerJSON "" "bower.json" )
+--      print $ map (\(a,b,_) -> (a,b)) tree
 
      let (webc, tree') = DL.partition (\(a,_,_)-> a `elem` wc) tree
---     print tree
          dt = deTree bd tree'
          (jss, rest) = DL.partition  (T.isSuffixOf ".js" . fst) dt
          (css, _)    = DL.partition  (T.isSuffixOf ".css" . fst) rest
@@ -133,16 +133,33 @@ main = do
      T.putStrLn $ "echo -e \" " <> refCss <> "\" > app.css"
      T.putStrLn   "\ncd .."
 
+
+
 generateRestCP ls = T.unlines $ DL.map  (\(a,b) -> let dt = ( fst . T.breakOn "*" . dropDist $ a) in "mkdir -p `dirname "<> dt <>"x` && cp -r ../" <> b <> " " <> dt ) ls
  -- maybe replace it by find
 
 
--- | sort no dep first, then push back all that need the previous
-deps (n1, [] , _) (n2, dl2, _) = LT
-deps (n1, dl1 , _) (n2, [], _) = GT
-deps (n1, dl1 , _) (n2, dl2, _) = case (n1 `elem` dl2, n2 `elem` dl1) of
-         (True,  True ) -> EQ -- trace "circular deps" 
-         -- ^ should be error as they need eachother
-         (False, False) -> EQ
-         (True, False ) -> LT
-         (False, True ) -> GT
+-- topoSort = fix (DL.sortBy deps)
+--
+-- -- | sort no dep first, then push back all that need the previous
+-- deps (n1, [] , _) (n2, dl2, _) = LT
+-- deps (n1, dl1 , _) (n2, [], _) = GT
+-- deps (n1, dl1 , _) (n2, dl2, _) = case (n1 `elem` dl2, n2 `elem` dl1) of
+--          (True,  True ) -> EQ -- trace "circular deps" - yse initial order
+--          -- ^ should be error as they need eachother
+--          (False, False) -> EQ
+--          (True, False ) -> LT
+--          (False, True ) -> GT
+
+fix :: Eq a => (a -> a) -> a -> a
+fix f a = let a1 = f a in if a1 == a then a1 else fix f a1
+
+topoSort2 (n1@(n, [] , _):ls) = n1 : topoSort2 (map (\(a,b,c) -> (a, n `DL.delete` b, c)) ls)
+-- circular deps will kill me
+topoSort2 (n1:ls) = topoSort2 (ls ++ [n1])
+topoSort2 [] = []
+
+topoSort3 [] (n1@(n, _ , _):ls) = n1 : topoSort2 (map (\(a,b,c) -> (a, n `DL.delete` b, c)) ls)
+-- circular deps will kill me
+topoSort3 [] (n1:ls) = topoSort2 (ls ++ [n1])
+topoSort3 [] = []
