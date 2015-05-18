@@ -41,18 +41,18 @@ script:
  - if [ -f configure.ac ]; then autoreconf -i; fi
  - cabal configure --enable-tests --enable-library-coverage || cabal configure --enable-tests --enable-coverage
  - cabal build
- - cabal test
- - cabal sdist
-# The following scriptlet checks that the resulting source distribution can be built & installed
- - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
-   cd dist/;
-   if [ -f "$SRC_TGZ" ]; then
-      cabal install --force-reinstalls "$SRC_TGZ";
-   else
-      echo "expected '$SRC_TGZ' not found";
-      exit 1;
-   fi
-
-after_script:
- - cabal install hpc-coveralls
- - hpc-coveralls --exclude-dir=test test
+# - cabal test
+# - cabal sdist
+## The following scriptlet checks that the resulting source distribution can be built & installed
+# - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
+#   cd dist/;
+#   if [ -f "$SRC_TGZ" ]; then
+#      cabal install --force-reinstalls "$SRC_TGZ";
+#   else
+#      echo "expected '$SRC_TGZ' not found";
+#      exit 1;
+#   fi
+#
+#after_script:
+# - cabal install hpc-coveralls
+# - hpc-coveralls --exclude-dir=test test
