@@ -40,7 +40,7 @@ install:
 script:
  - if [ -f configure.ac ]; then autoreconf -i; fi
  - cabal configure --enable-tests --enable-library-coverage || cabal configure --enable-tests --enable-coverage
- - travis_wait cabal build
+ - cabal build
  - cabal test
  - cabal sdist
 # The following scriptlet checks that the resulting source distribution can be built & installed

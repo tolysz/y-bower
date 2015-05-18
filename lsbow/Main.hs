@@ -162,4 +162,4 @@ topoSort2 [] = []
 topoSort3 [] (n1@(n, _ , _):ls) = n1 : topoSort2 (map (\(a,b,c) -> (a, n `DL.delete` b, c)) ls)
 -- circular deps will kill me
 topoSort3 [] (n1:ls) = topoSort2 (ls ++ [n1])
-topoSort3 [] = []
+topoSort3 [] _ = []
