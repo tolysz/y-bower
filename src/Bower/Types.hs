@@ -69,7 +69,7 @@ instance FromJSON BowerJSON where
 newtype HideDefault a = HideDefault { unHide :: a }
 instance (Default a, Eq a, ToJSON a) => ToJSON (HideDefault a) where
        toJSON a
-          | unHide a == def   = Missing
+          | unHide a == def   = Omitted
           | otherwise = toJSON a
 
 instance (Default a, Eq a, FromJSON a) => FromJSON (HideDefault a) where

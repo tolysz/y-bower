@@ -2,6 +2,7 @@
            , OverloadedStrings
            , ScopedTypeVariables
            , ViewPatterns
+           , FlexibleContexts
            #-}
 
 module Main where
@@ -136,20 +137,6 @@ main = do
 
 
 generateRestCP ls = T.unlines $ DL.map  (\(a,b) -> let dt = ( fst . T.breakOn "*" . dropDist $ a) in "mkdir -p `dirname "<> dt <>"x` && cp -r ../" <> b <> " " <> dt ) ls
- -- maybe replace it by find
-
-
--- topoSort = fix (DL.sortBy deps)
---
--- -- | sort no dep first, then push back all that need the previous
--- deps (n1, [] , _) (n2, dl2, _) = LT
--- deps (n1, dl1 , _) (n2, [], _) = GT
--- deps (n1, dl1 , _) (n2, dl2, _) = case (n1 `elem` dl2, n2 `elem` dl1) of
---          (True,  True ) -> EQ -- trace "circular deps" - yse initial order
---          -- ^ should be error as they need eachother
---          (False, False) -> EQ
---          (True, False ) -> LT
---          (False, True ) -> GT
 
 fix :: Eq a => (a -> a) -> a -> a
 fix f a = let a1 = f a in if a1 == a then a1 else fix f a1
