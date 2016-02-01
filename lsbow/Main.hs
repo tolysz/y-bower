@@ -114,7 +114,7 @@ main = do
 --     putStrLn "bow"
      bd   <-  T.pack <$>  getBaseDir
      wc   <- getWebComponents
-     tree <- topoSort3 [] <$> ( recurseDeps bd [] =<< getDeps <$> readBowerJSON "" "bower.json" )
+     tree <- topoSort2  <$> ( recurseDeps bd [] =<< getDeps <$> readBowerJSON "" "bower.json" )
 --      print $ map (\(a,b,_) -> (a,b)) tree
 
      let (webc, tree') = DL.partition (\(a,_,_)-> a `elem` wc) tree
